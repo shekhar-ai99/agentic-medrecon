@@ -1,0 +1,12 @@
+# MARS runs on the Python standard library alone for the core pipeline and
+# evaluation (no numpy/pandas needed). Only testing and optional real-data
+# work pull in extras.
+
+# Testing
+pytest>=7.0
+
+# --- Optional, for real MIMIC-III work (uncomment as needed) ---
+# pandas>=2.0          # loading PRESCRIPTIONS / NOTEEVENTS CSVs
+# requests>=2.28       # RxNorm REST API for reference-standard normalization
+# transformers>=4.35   # BioBERT span tagger in the Extraction Agent
+# torch>=2.0           # backbone for the above

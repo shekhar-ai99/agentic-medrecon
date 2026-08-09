@@ -1,0 +1,20 @@
+# Default MARS configuration, mirroring the paper's hyperparameter table.
+orchestration:
+  coordinate: true            # false = "Pipeline (no orchestration)" baseline
+  consistency_threshold: 0.8  # tau
+  max_rework: 2
+
+score_weights:                # R = w_A*A + w_N*N + w_C*C_bar
+  w_a: 0.4
+  w_n: 0.3
+  w_c: 0.3
+
+agents:
+  temperature: 0.2            # for LLM agent backbones (when swapped in)
+  normalization_coverage_floor: 0.7
+
+evaluation:
+  test_split: 0.15
+  val_split: 0.15
+  patient_level_disjoint: true
+  random_seed: 42
