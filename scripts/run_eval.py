@@ -31,14 +31,21 @@ from mars.evaluation import (score_discrepancies, normalization_accuracy,
                              score_severity_correlation)
 
 
-def load_admissions(n: int, seed: int, noise: float = 0.0):
+def load_admissions(n: int, seed: int, noise: float = 0.0, mimic_dir=None):
     """Load (Admission, ground_truth) pairs.
 
-    Replace this function body with a real MIMIC-III loader:
-      - read PRESCRIPTIONS for structured orders,
-      - read NOTEEVENTS for admission/discharge notes,
-      - build ground truth with scripts/build_reference.py.
+    If --mimic-dir is given, load REAL MIMIC-III CSVs (PRESCRIPTIONS +
+    NOTEEVENTS) via mars.mimic_loader; ground truth is None (build it with
+    scripts/build_reference.py). Otherwise fall back to the synthetic
+    generator.
+
+    NOTE: the open MIMIC-III DEMO has NOTEEVENTS removed, so the discharge side
+    will be empty there -- use full credentialed MIMIC-III for the complete
+    pipeline. See mars/mimic_loader.py.
     """
+    if mimic_dir:
+        from mars.mimic_loader import load_admissions as load_mimic
+        return list(load_mimic(mimic_dir, limit=n))
     return list(generate(n, start_seed=seed, noise=noise))
 
 
@@ -98,9 +105,40 @@ def main():
     ap.add_argument("--noise", type=float, default=0.4,
                     help="Fraction of admissions with hard-to-normalize meds "
                          "(mirrors MIMIC-III messiness; exercises orchestration).")
+    ap.add_argument("--mimic-dir", type=str, default=None,
+                    help="Directory of real MIMIC-III CSVs. If set, loads real "
+                         "data instead of synthetic. Requires a reference "
+                         "standard (scripts/build_reference.py) for scoring.")
     args = ap.parse_args()
 
-    admissions = load_admissions(args.n, args.seed, noise=args.noise)
+    admissions = load_admissions(args.n, args.seed, noise=args.noise,
+                                 mimic_dir=args.mimic_dir)
+
+    # Real MIMIC-III has no bundled ground truth; scoring needs the reference
+    # standard built separately. Without it, we can still run the pipeline and
+    # report coverage / score / discrepancy COUNTS, just not P/R/F1.
+    if args.mimic_dir and all(gt is None for _, gt in admissions):
+        print(f"\nLoaded {len(admissions)} real MIMIC-III admissions.")
+        print("No reference standard supplied -- running pipeline and "
+              "reporting descriptive stats only (no P/R/F1).\n")
+        mars = MARS(coordinate=True)
+        total_disc = total_inter = 0
+        scores = []
+        for adm, _ in admissions:
+            r = mars.run(adm)
+            total_disc += len(r.discrepancies)
+            total_inter += len(r.interactions)
+            scores.append(r.score)
+        import statistics
+        print(f"  admissions processed : {len(admissions)}")
+        print(f"  total discrepancies  : {total_disc} "
+              f"({total_disc/max(1,len(admissions)):.2f}/admission)")
+        print(f"  total interactions   : {total_inter}")
+        if scores:
+            print(f"  mean recon score R   : {statistics.mean(scores):.3f}")
+        print("\nTo get P/R/F1, build a reference standard with "
+              "scripts/build_reference.py and load it here.\n")
+        return
     print(f"\nLoaded {len(admissions)} admissions "
           f"({len({a.subject_id for a, _ in admissions})} patients)\n")
     print("=" * 78)

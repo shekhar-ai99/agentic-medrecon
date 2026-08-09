@@ -1,7 +1,5 @@
 # MARS — Multi-Agent Reconciliation System
 
-[![tests](https://github.com/shekhar-ai99/agentic-medrecon/actions/workflows/tests.yml/badge.svg)](https://github.com/shekhar-ai99/agentic-medrecon/actions/workflows/tests.yml)
-
 A reference scaffold for the paper **"Agentic Clinical Decision Support: A
 Multi-Agent LLM Architecture for Medication Reconciliation on MIMIC-III."**
 
@@ -83,6 +81,7 @@ mars/
   orchestrator.py    MARS — coordination protocol + composite score
   fhir.py            FHIR Bundle / MedicationStatement / DetectedIssue
   synthetic.py       MIMIC-III-shaped admission generator (+ ground truth)
+  mimic_loader.py    Real MIMIC-III CSV loader (PRESCRIPTIONS + NOTEEVENTS)
   evaluation.py      P/R/F1, normalization acc, score correlation (stdlib only)
 scripts/
   demo.py            Single-admission walkthrough with full inspectability
@@ -98,23 +97,43 @@ configs/
 
 ## Using real MIMIC-III
 
-The scaffold is written so real data drops in behind the existing interfaces:
+The scaffold ships a real loader (`mars/mimic_loader.py`) that reads genuine
+MIMIC-III CSVs into the same `Admission` objects the synthetic generator
+produces, so the whole pipeline runs unchanged on real data:
 
-1. **Get credentialed access.** MIMIC-III requires CITI human-subjects training
-   and a signed PhysioNet Data Use Agreement:
-   https://physionet.org/content/mimiciii/1.4/
-2. **Load real admissions.** Replace the body of `load_admissions()` in
-   `scripts/run_eval.py` with a loader over `PRESCRIPTIONS.csv.gz` (structured
-   orders) and `NOTEEVENTS.csv.gz` (admission + discharge summaries).
-3. **Build the reference standard.** Fill in `scripts/build_reference.py`,
-   which documents the exact heuristic procedure from the paper (independent
-   offline RxNorm normalization of both sides, typed set-difference, severity
-   weighting, patient-level 70/15/15 splits).
-4. **Swap in real components** (optional): a fine-tuned BioBERT span tagger in
-   `extraction.py`, a real RxNorm RRF load + LLM disambiguation in
-   `normalization.py`, and your DDI source in `knowledge.py`.
+```bash
+# Run the pipeline on real MIMIC-III CSVs (descriptive stats without labels):
+python scripts/run_eval.py --mimic-dir /path/to/mimic-iii/
 
-None of these changes touch the orchestration logic or the evaluation harness.
+# Build a heuristic reference standard from real data:
+python scripts/build_reference.py --mimic-dir /path/to/mimic-iii/ --out data/reference.jsonl
+```
+
+The loader targets the real schema (verified column names):
+`PRESCRIPTIONS` → `DRUG, DOSE_VAL_RX, DOSE_UNIT_RX, ROUTE, HADM_ID, SUBJECT_ID`;
+`NOTEEVENTS` → filter `CATEGORY == 'Discharge summary'`, read `TEXT`. It handles
+both `.csv` and `.csv.gz`, and slices the "Discharge Medications" section out of
+each summary.
+
+### ⚠️ The open MIMIC-III DEMO cannot run the full pipeline
+
+The open, un-credentialed **MIMIC-III demo (mimiciii-demo/1.4) has the
+NOTEEVENTS table removed entirely** — every row deleted. Because reconciliation
+reads the discharge medication list from discharge summaries in NOTEEVENTS, the
+demo can exercise only the PRESCRIPTIONS (structured-orders) half of the loader.
+The loader detects this and warns. For the complete pipeline and any reportable
+numbers you need **full, credentialed MIMIC-III** (CITI training + PhysioNet
+DUA: https://physionet.org/content/mimiciii/1.4/), or MIMIC-IV, which has
+cleaner pharmacy data.
+
+**Do not commit MIMIC CSVs to the repo** — the data license forbids
+redistribution. `.gitignore` already excludes `data/*.csv*`. Point `--mimic-dir`
+at your local credentialed copy.
+
+To swap in real model components (optional): a fine-tuned BioBERT span tagger in
+`extraction.py`, a real RxNorm RRF load + LLM disambiguation in
+`normalization.py`, and your DDI source in `knowledge.py`. None of these touch
+the orchestration logic or the evaluation harness.
 
 ---
 

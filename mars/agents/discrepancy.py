@@ -53,12 +53,17 @@ class DiscrepancyAgent:
                 if len(distinct_discharge_cuis) > 1:
                     discrepancies.append(Discrepancy(
                         DiscrepancyType.DUPLICATION, ing, severity_for(ing)))
-                if self._norm(s0.dose) != self._norm(d0.dose) and (s0.dose or d0.dose):
+                # A dose/frequency CONFLICT requires a value on BOTH sides that
+                # differ. If one side is missing the field entirely (common in
+                # real MIMIC-III: PRESCRIPTIONS has no frequency column), that
+                # is missing data, not a conflict -- flagging it would inflate
+                # discrepancy counts with false positives.
+                if s0.dose and d0.dose and self._norm(s0.dose) != self._norm(d0.dose):
                     discrepancies.append(Discrepancy(
                         DiscrepancyType.DOSE_CONFLICT, ing, severity_for(ing),
                         source_detail=s0.dose, discharge_detail=d0.dose))
-                if self._norm(s0.frequency) != self._norm(d0.frequency) and \
-                        (s0.frequency or d0.frequency):
+                if s0.frequency and d0.frequency and \
+                        self._norm(s0.frequency) != self._norm(d0.frequency):
                     discrepancies.append(Discrepancy(
                         DiscrepancyType.FREQUENCY_CONFLICT, ing, severity_for(ing),
                         source_detail=s0.frequency, discharge_detail=d0.frequency))
