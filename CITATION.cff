@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "MARS: Multi-Agent Reconciliation System"
+abstract: >-
+  Reference scaffold for the paper "Agentic Clinical Decision Support: A
+  Multi-Agent LLM Architecture for Medication Reconciliation on MIMIC-III."
+authors:
+  - family-names: Shekhar
+    given-names: Chandra
+repository-code: "https://github.com/shekhar-ai99/agentic-medrecon"
+license: MIT
+version: 0.1.0
+date-released: "2026-08-09"
+# doi: 10.5281/zenodo.XXXXXXX  # uncomment and fill in after minting on Zenodo
