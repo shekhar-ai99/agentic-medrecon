@@ -1,5 +1,7 @@
 # MARS — Multi-Agent Reconciliation System
 
+[![tests](https://github.com/shekhar-ai99/agentic-medrecon/actions/workflows/tests.yml/badge.svg)](https://github.com/shekhar-ai99/agentic-medrecon/actions/workflows/tests.yml)
+
 A reference scaffold for the paper **"Agentic Clinical Decision Support: A
 Multi-Agent LLM Architecture for Medication Reconciliation on MIMIC-III."**
 
